@@ -35,7 +35,7 @@ h1 { font-size: 24px; color: #1a1a1a; margin-bottom: 24px; text-align: center; }
   padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
   font-size: 13px; outline: none; background: #fff;
 }
-.add-row input[type="date"] {
+.add-row input[type="date"], .add-row input[type="time"] {
   padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
   font-size: 13px; outline: none;
 }
@@ -112,7 +112,7 @@ h1 { font-size: 24px; color: #1a1a1a; margin-bottom: 24px; text-align: center; }
 .edit-row {
   display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap;
 }
-.edit-row select, .edit-row input[type="date"] {
+.edit-row select, .edit-row input[type="date"], .edit-row input[type="time"] {
   padding: 5px 8px; border: 1px solid #d0d0d0; border-radius: 6px;
   font-size: 13px; outline: none;
 }
@@ -147,6 +147,7 @@ h1 { font-size: 24px; color: #1a1a1a; margin-bottom: 24px; text-align: center; }
         <option value="low">低优先级</option>
       </select>
       <input type="date" id="dateInput">
+      <input type="time" id="timeInput">
       <button class="add-btn" onclick="addTask()">添加</button>
     </div>
   </div>
@@ -173,21 +174,31 @@ let editingId = null;
 
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
 
+function getDefaultDatetime() {
+  const d = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+    'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
 function addTask() {
   const title = document.getElementById('titleInput').value.trim();
   if (!title) return;
+  const dateVal = document.getElementById('dateInput').value;
+  const timeVal = document.getElementById('timeInput').value;
   tasks.unshift({
     id: Date.now(),
     title,
     note: document.getElementById('noteInput').value.trim(),
     priority: document.getElementById('priorityInput').value,
-    dueDate: document.getElementById('dateInput').value,
+    dueDate: dateVal && timeVal ? dateVal + 'T' + timeVal : (dateVal || ''),
     done: false,
     createdAt: new Date().toISOString()
   });
   document.getElementById('titleInput').value = '';
   document.getElementById('noteInput').value = '';
   document.getElementById('dateInput').value = '';
+  document.getElementById('timeInput').value = '';
   save();
   render();
 }
@@ -218,12 +229,14 @@ function saveEdit(id) {
   const form = document.getElementById('editForm-' + id);
   const title = form.querySelector('.edit-title').value.trim();
   if (!title) return;
+  const dateVal = form.querySelector('.edit-date').value;
+  const timeVal = form.querySelector('.edit-time').value;
   const task = tasks.find(t => t.id === id);
   if (task) {
     task.title = title;
     task.note = form.querySelector('.edit-note').value.trim();
     task.priority = form.querySelector('.edit-priority').value;
-    task.dueDate = form.querySelector('.edit-date').value;
+    task.dueDate = dateVal && timeVal ? dateVal + 'T' + timeVal : (dateVal || '');
   }
   editingId = null;
   save();
@@ -244,20 +257,25 @@ function getFilteredTasks() {
     case 'active': return tasks.filter(t => !t.done);
     case 'done': return tasks.filter(t => t.done);
     case 'high': return tasks.filter(t => t.priority === 'high');
-    case 'today': return tasks.filter(t => t.dueDate === today);
+    case 'today': return tasks.filter(t => t.dueDate && t.dueDate.split('T')[0] === today);
     default: return tasks;
   }
 }
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+  const pad = n => String(n).padStart(2, '0');
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hour = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return month + '月' + day + '日 ' + hour + ':' + min;
 }
 
 function isOverdue(dateStr) {
   if (!dateStr) return false;
-  return dateStr < new Date().toISOString().split('T')[0];
+  return new Date(dateStr) < new Date();
 }
 
 function priorityLabel(p) {
@@ -280,6 +298,7 @@ function renderTaskView(t) {
 }
 
 function renderEditForm(t) {
+  var parts = t.dueDate ? t.dueDate.split('T') : ['', ''];
   return '<div class="edit-form" id="editForm-' + t.id + '">' +
     '<input type="text" class="edit-title" value="' + escapeHtml(t.title) + '" maxlength="200">' +
     '<textarea class="edit-note" rows="2" placeholder="备注（可选）">' + escapeHtml(t.note) + '</textarea>' +
@@ -289,7 +308,8 @@ function renderEditForm(t) {
         '<option value="medium"' + (t.priority === 'medium' ? ' selected' : '') + '>中优先级</option>' +
         '<option value="low"' + (t.priority === 'low' ? ' selected' : '') + '>低优先级</option>' +
       '</select>' +
-      '<input type="date" class="edit-date" value="' + t.dueDate + '">' +
+      '<input type="date" class="edit-date" value="' + parts[0] + '">' +
+      '<input type="time" class="edit-time" value="' + (parts[1] || '') + '">' +
       '<div class="edit-actions">' +
         '<button class="save-btn" onclick="saveEdit(' + t.id + ')">保存</button>' +
         '<button class="cancel-btn" onclick="cancelEdit()">取消</button>' +
@@ -328,6 +348,13 @@ function escapeHtml(str) {
 document.getElementById('titleInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); addTask(); }
 });
+
+(function initDefaultTime() {
+  var dt = getDefaultDatetime();
+  var parts = dt.split('T');
+  document.getElementById('dateInput').value = parts[0];
+  document.getElementById('timeInput').value = parts[1];
+})();
 
 render();
 </script>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作记事本</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: #f0f2f5;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+}
+.container { max-width: 720px; width: 100%; }
+h1 { font-size: 24px; color: #1a1a1a; margin-bottom: 24px; text-align: center; }
+
+.add-section {
+  background: #fff; border-radius: 12px; padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;
+}
+.add-section input, .add-section textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0;
+  border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
+  font-family: inherit;
+}
+.add-section input:focus, .add-section textarea:focus { border-color: #4f6ef7; }
+.add-section textarea { resize: vertical; min-height: 48px; margin-top: 8px; }
+.add-row {
+  display: flex; gap: 8px; margin-top: 8px; align-items: center;
+}
+.add-row select {
+  padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 13px; outline: none; background: #fff;
+}
+.add-row input[type="date"] {
+  padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 13px; outline: none;
+}
+.add-btn {
+  padding: 8px 20px; background: #4f6ef7; color: #fff; border: none;
+  border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 500;
+  transition: background .2s; white-space: nowrap; margin-left: auto;
+}
+.add-btn:hover { background: #3b5de7; }
+
+.filters {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 6px 14px; border: 1px solid #d0d0d0; border-radius: 20px;
+  background: #fff; font-size: 13px; cursor: pointer; transition: all .2s;
+}
+.filter-btn.active { background: #4f6ef7; color: #fff; border-color: #4f6ef7; }
+
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+.task {
+  background: #fff; border-radius: 10px; padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex; align-items: flex-start; gap: 12px;
+  transition: box-shadow .2s;
+}
+.task:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.task.done { opacity: 0.55; }
+.task.done .task-title { text-decoration: line-through; }
+
+.checkbox {
+  width: 20px; height: 20px; border-radius: 50%; border: 2px solid #d0d0d0;
+  flex-shrink: 0; cursor: pointer; transition: all .2s; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+}
+.checkbox:hover { border-color: #4f6ef7; }
+.task.done .checkbox { background: #4f6ef7; border-color: #4f6ef7; }
+.task.done .checkbox::after { content: "✓"; color: #fff; font-size: 12px; }
+
+.task-body { flex: 1; min-width: 0; }
+.task-title { font-size: 15px; color: #1a1a1a; word-break: break-word; cursor: default; }
+.task-note { font-size: 13px; color: #888; margin-top: 4px; word-break: break-word; }
+.task-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.priority {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+}
+.priority-high { background: #fff1f0; color: #cf1322; }
+.priority-medium { background: #fff7e6; color: #d46b08; }
+.priority-low { background: #f6ffed; color: #389e0d; }
+.due-date { font-size: 12px; color: #888; }
+.due-date.overdue { color: #cf1322; font-weight: 500; }
+
+.task-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.edit-btn {
+  flex-shrink: 0; width: 28px; height: 28px; border: none; background: none;
+  cursor: pointer; color: #ccc; font-size: 15px; border-radius: 6px;
+  transition: all .2s; display: flex; align-items: center; justify-content: center;
+}
+.edit-btn:hover { color: #4f6ef7; background: #f0f2ff; }
+.delete-btn {
+  flex-shrink: 0; width: 28px; height: 28px; border: none; background: none;
+  cursor: pointer; color: #ccc; font-size: 18px; border-radius: 6px;
+  transition: all .2s; display: flex; align-items: center; justify-content: center;
+}
+.delete-btn:hover { color: #ff4d4f; background: #fff1f0; }
+
+.edit-form { flex: 1; min-width: 0; }
+.edit-form input[type="text"], .edit-form textarea {
+  width: 100%; padding: 6px 10px; border: 1px solid #d0d0d0;
+  border-radius: 6px; font-size: 14px; outline: none; font-family: inherit;
+}
+.edit-form input[type="text"]:focus, .edit-form textarea:focus { border-color: #4f6ef7; }
+.edit-form textarea { resize: vertical; min-height: 40px; margin-top: 4px; }
+.edit-row {
+  display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap;
+}
+.edit-row select, .edit-row input[type="date"] {
+  padding: 5px 8px; border: 1px solid #d0d0d0; border-radius: 6px;
+  font-size: 13px; outline: none;
+}
+.edit-actions { display: flex; gap: 6px; margin-left: auto; }
+.save-btn, .cancel-btn {
+  padding: 4px 12px; border: none; border-radius: 6px; font-size: 12px;
+  cursor: pointer; font-weight: 500;
+}
+.save-btn { background: #4f6ef7; color: #fff; }
+.save-btn:hover { background: #3b5de7; }
+.cancel-btn { background: #f0f0f0; color: #666; }
+.cancel-btn:hover { background: #e0e0e0; }
+
+.empty { text-align: center; color: #aaa; padding: 40px; font-size: 14px; }
+
+.stats {
+  text-align: center; color: #888; font-size: 13px; margin-top: 16px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>工作记事本</h1>
+
+  <div class="add-section">
+    <input type="text" id="titleInput" placeholder="添加新任务..." maxlength="200">
+    <textarea id="noteInput" placeholder="备注（可选）" rows="2"></textarea>
+    <div class="add-row">
+      <select id="priorityInput">
+        <option value="medium">中优先级</option>
+        <option value="high">高优先级</option>
+        <option value="low">低优先级</option>
+      </select>
+      <input type="date" id="dateInput">
+      <button class="add-btn" onclick="addTask()">添加</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all')">全部</button>
+    <button class="filter-btn" onclick="setFilter('active')">进行中</button>
+    <button class="filter-btn" onclick="setFilter('done')">已完成</button>
+    <button class="filter-btn" onclick="setFilter('high')">高优先级</button>
+    <button class="filter-btn" onclick="setFilter('today')">今日到期</button>
+  </div>
+
+  <div class="task-list" id="taskList"></div>
+
+  <div class="stats" id="stats"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'work_todo_list';
+
+let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let filter = 'all';
+let editingId = null;
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+
+function addTask() {
+  const title = document.getElementById('titleInput').value.trim();
+  if (!title) return;
+  tasks.unshift({
+    id: Date.now(),
+    title,
+    note: document.getElementById('noteInput').value.trim(),
+    priority: document.getElementById('priorityInput').value,
+    dueDate: document.getElementById('dateInput').value,
+    done: false,
+    createdAt: new Date().toISOString()
+  });
+  document.getElementById('titleInput').value = '';
+  document.getElementById('noteInput').value = '';
+  document.getElementById('dateInput').value = '';
+  save();
+  render();
+}
+
+function toggleTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (task) { task.done = !task.done; save(); render(); }
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  editingId = null;
+  save();
+  render();
+}
+
+function startEdit(id) {
+  editingId = id;
+  render();
+}
+
+function cancelEdit() {
+  editingId = null;
+  render();
+}
+
+function saveEdit(id) {
+  const form = document.getElementById('editForm-' + id);
+  const title = form.querySelector('.edit-title').value.trim();
+  if (!title) return;
+  const task = tasks.find(t => t.id === id);
+  if (task) {
+    task.title = title;
+    task.note = form.querySelector('.edit-note').value.trim();
+    task.priority = form.querySelector('.edit-priority').value;
+    task.dueDate = form.querySelector('.edit-date').value;
+  }
+  editingId = null;
+  save();
+  render();
+}
+
+function setFilter(f) {
+  filter = f;
+  editingId = null;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.filter-btn[onclick="setFilter(\'' + f + '\')"]').classList.add('active');
+  render();
+}
+
+function getFilteredTasks() {
+  const today = new Date().toISOString().split('T')[0];
+  switch (filter) {
+    case 'active': return tasks.filter(t => !t.done);
+    case 'done': return tasks.filter(t => t.done);
+    case 'high': return tasks.filter(t => t.priority === 'high');
+    case 'today': return tasks.filter(t => t.dueDate === today);
+    default: return tasks;
+  }
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+}
+
+function isOverdue(dateStr) {
+  if (!dateStr) return false;
+  return dateStr < new Date().toISOString().split('T')[0];
+}
+
+function priorityLabel(p) {
+  return { high: '高', medium: '中', low: '低' }[p] || p;
+}
+
+function renderTaskView(t) {
+  return '<div class="task-body">' +
+    '<div class="task-title">' + escapeHtml(t.title) + '</div>' +
+    (t.note ? '<div class="task-note">' + escapeHtml(t.note) + '</div>' : '') +
+    '<div class="task-meta">' +
+      '<span class="priority priority-' + t.priority + '">' + priorityLabel(t.priority) + '</span>' +
+      (t.dueDate ? '<span class="due-date' + (isOverdue(t.dueDate) && !t.done ? ' overdue' : '') + '">' + formatDate(t.dueDate) + (isOverdue(t.dueDate) && !t.done ? ' ⚠' : '') + '</span>' : '') +
+    '</div>' +
+    '</div>' +
+    '<div class="task-actions">' +
+      '<button class="edit-btn" onclick="startEdit(' + t.id + ')" title="编辑">✎</button>' +
+      '<button class="delete-btn" onclick="deleteTask(' + t.id + ')" title="删除">×</button>' +
+    '</div>';
+}
+
+function renderEditForm(t) {
+  return '<div class="edit-form" id="editForm-' + t.id + '">' +
+    '<input type="text" class="edit-title" value="' + escapeHtml(t.title) + '" maxlength="200">' +
+    '<textarea class="edit-note" rows="2" placeholder="备注（可选）">' + escapeHtml(t.note) + '</textarea>' +
+    '<div class="edit-row">' +
+      '<select class="edit-priority">' +
+        '<option value="high"' + (t.priority === 'high' ? ' selected' : '') + '>高优先级</option>' +
+        '<option value="medium"' + (t.priority === 'medium' ? ' selected' : '') + '>中优先级</option>' +
+        '<option value="low"' + (t.priority === 'low' ? ' selected' : '') + '>低优先级</option>' +
+      '</select>' +
+      '<input type="date" class="edit-date" value="' + t.dueDate + '">' +
+      '<div class="edit-actions">' +
+        '<button class="save-btn" onclick="saveEdit(' + t.id + ')">保存</button>' +
+        '<button class="cancel-btn" onclick="cancelEdit()">取消</button>' +
+      '</div>' +
+    '</div>' +
+    '</div>';
+}
+
+function render() {
+  const list = document.getElementById('taskList');
+  const filtered = getFilteredTasks();
+  const activeCount = tasks.filter(t => !t.done).length;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">暂无任务</div>';
+  } else {
+    list.innerHTML = filtered.map(function(t) {
+      var isEditing = editingId === t.id;
+      return '<div class="task' + (t.done ? ' done' : '') + '">' +
+        '<div class="checkbox" onclick="toggleTask(' + t.id + ')"></div>' +
+        (isEditing ? renderEditForm(t) : renderTaskView(t)) +
+        '</div>';
+    }).join('');
+  }
+
+  document.getElementById('stats').textContent =
+    '共 ' + tasks.length + ' 项任务，' + activeCount + ' 项进行中';
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('titleInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addTask(); }
+});
+
+render();
+</script>
+</body>
+</html>
